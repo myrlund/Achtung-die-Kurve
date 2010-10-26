@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  	<meta charset="utf-8">
+  	<title>Achtung die Kurve</title>
+  	
+  	<script src="http://code.jquery.com/jquery-1.4.3.min.js"></script>
+  	<script src="achtung.js"></script>
+  	<script src="scoreboard.js"></script>
+  	
+  	<style>
+  	  #c, #scoreboard {
+  	    background: #ddd;
+  	    border: 5px solid #777;
+  	  }
+  	  #c {
+  	    float: left;
+  	    margin-right: 1em;
+  	  }
+  	  #scoreboard {
+  	    float: left;
+  	    width: 20em;
+	      font-family: verdana, arial, sans-serif;
+	      padding: 1em;
+  	  }
+  	    #scoreboard h3 {
+  	    }
+  	    #scoreboard ol {
+  	      padding: 0;
+  	      list-style-type: none;
+  	    }
+  	      #scoreboard ol li {
+  	      }
+  	      #scoreboard ol li.highlighted {
+  	        color: #f00;
+  	      }
+          
+  	    
+  	</style>
+  </head>
+  <body>
+    <canvas id="c" width="800" height="600">You no support this game. GTFO!</canvas>
+    
+    <div id="scoreboard">
+      <h3>Scores</h3>
+      <ol></ol>
+    </div>
+    
+    <div style="clear: both"></div>
+    <script>
+      
+      var canvas = document.getElementById("c");
+      var ctx = canvas.getContext("2d");
+      
+      var WIDTH = 800;
+      var HEIGHT = 600;
+      
+      var scoreboard = new Scoreboard(document.getElementById("scoreboard"));
+      var game = new Game(scoreboard);
+      
+      document.body.onkeydown = function(evt){ game.handleKeyDown(evt) };
+      
+      game.addPlayer({name: "Jonas", color: "#f00"});
+      game.addPlayer({name: "Foo", color: "#0f0"});
+      game.addPlayer({name: "Bar", color: "#00f"});
+      
+      game.start();
+      
+    </script>
+  </body>
+</html>

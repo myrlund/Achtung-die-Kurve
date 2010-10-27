@@ -9,24 +9,30 @@
   	<script src="scoreboard.js"></script>
   	
   	<style>
-  	  #c, #scoreboard {
-  	    background: #ddd;
-  	    border: 5px solid #777;
+  	  #game {
+  	    width: 1000px;
+  	    border: 5px solid #ccc;
+  	    color: #fff;
   	  }
   	  #c {
+  	    background: #000;
   	    float: left;
-  	    margin-right: 1em;
+  	    border-right: 5px solid #777;
   	  }
   	  #scoreboard {
+  	    background: #444;
   	    float: left;
-  	    width: 20em;
+  	    width: 165px;
+  	    height: 570px;
 	      font-family: verdana, arial, sans-serif;
-	      padding: 1em;
+	      padding: 15px;
   	  }
   	    #scoreboard h3 {
+  	      margin: 0 0 1em;
   	    }
   	    #scoreboard ol {
   	      padding: 0;
+  	      margin: 0;
   	      list-style-type: none;
   	    }
   	      #scoreboard ol li {
@@ -34,19 +40,28 @@
   	      #scoreboard ol li.highlighted {
   	        color: #f00;
   	      }
+  	      #scoreboard ol li.placeholder {
+  	        color: #777;
+  	        font-style: italic;
+  	      }
           
   	    
   	</style>
   </head>
   <body>
-    <canvas id="c" width="800" height="600">You no support this game. GTFO!</canvas>
     
-    <div id="scoreboard">
-      <h3>Scores</h3>
-      <ol></ol>
-    </div>
+    <section id="game">
+      <canvas id="c" width="800" height="600">You no support this game. GTFO!</canvas>
     
-    <div style="clear: both"></div>
+      <aside id="scoreboard">
+        <h3>Scores</h3>
+        <ol>
+          <li class="placeholder">Press controls to add players.</li>
+        </ol>
+      </aside>
+    
+      <div style="clear: both"></div>
+    </section>
     <script>
       
       var canvas = document.getElementById("c");
@@ -59,12 +74,12 @@
       var game = new Game(scoreboard);
       
       document.body.onkeydown = function(evt){ game.handleKeyDown(evt) };
+      document.body.onkeyup = function(evt){ game.handleKeyUp(evt) };
       
-      game.addPlayer({name: "Jonas", color: "#f00"});
-      game.addPlayer({name: "Foo", color: "#0f0"});
-      game.addPlayer({name: "Bar", color: "#00f"});
-      
-      game.start();
+      game.initialize(5);
+      // game.addPlayer({name: "Jonas", color: "#f00"});
+      // game.addPlayer({name: "Foo", color: "#0f0"});
+      // game.addPlayer({name: "Bar", color: "#00f"});
       
     </script>
   </body>

@@ -1,95 +1,219 @@
 
-function Game(scoreboard) {
-	this.keyEvents = {
-		37: {snake: 0, direction: LEFT},
-		40: {snake: 0, direction: RIGHT}
+function Round(game, players) {
+	self = this;
+	
+	this.game = game;
+	this.initialPlayers = players;
+	this.remainingPlayers = players.length;
+	
+	this.players = {};
+	$.each(players, function(i, player) {
+		self.players[player.id] = player;
+	});
+	
+	this.snakes = {};
+	
+	this.initSnakes = function() {
+		$.each(this.players, function(i, player) {
+			var snake = new Snake(self, player);
+			self.snakes[i] = snake;
+			snake.randomizePosition();
+			snake.draw();
+		});
 	}
 	
+	this.handleKeyEvent = function(evt) {
+		if (this.snakes[evt.snake]) {
+			if (evt.type == E_KEY_DOWN)
+				this.snakes[evt.snake].startTurning(evt.direction);
+			else if (evt.type == E_KEY_UP)
+				this.snakes[evt.snake].stopTurning();
+		}
+	}
+	
+	this.start = function() {
+		$.each(this.snakes, function(i, snake) {
+			snake.start();
+		});
+	}
+	
+	this.snakeDied = function(snake) {
+		// Remove correct element from active snakes
+		var id = snake.player.id;
+		delete this.snakes[id];
+		delete this.players[id];
+		this.remainingPlayers--;
+		
+		// Update scoreboard
+		this.game.grantPoint(this.players);
+		
+		// Check for winner
+		if (this.remainingPlayers == 1) {
+			var winnerSnake;
+			$.each(this.snakes, function(i, snake){ winnerSnake = snake });
+			
+			// Stop remaining snake
+			winnerSnake.isAlive = false;
+			
+			// Highlight winner
+			this.game.scoreboard.highlight(winnerSnake.player);
+			
+			// Notify game
+			this.game.endRound();
+		}
+	}
+	
+	// Initialize
+	this.initSnakes();
+}
+
+function Game(scoreboard) {
+	var self = this;
+	
+	// Define which snakes are controlled left and right by which keyCodes (see: #handleKeyDown)
+	this.keyEvents = keyEvents();
+	
+	// Make sure game and scoreboard are aquainted
 	this.scoreboard = scoreboard;
+	this.scoreboard.game = this;
 	
-	// Per game
-	this.inProgress = false;
-	this.snakes = [];
-	this.scores = [];
+	// Hold the current round
+	this.currentRound = null;
 	
-	// Per round
-	this.loserStack = new Array();
+	// inProgress-switches
+	this.roundInProgress = false;
+	this.gameInProgress = false;
 	
+	// Keeping track of scores and participating players
+	this.scores = {};
+	this.players = {};
+	
+	this.initialize = function(numberOfPlayers) {
+		for (var i=0; i < numberOfPlayers; i++) {};
+	}
+	
+	/**
+	 * Initial handler for key presses. Passes on the logic to currentRound.
+	 */
 	this.handleKeyDown = function(event) {
-		if (this.keyEvents[event.keyCode]) {
-			var e = this.keyEvents[event.keyCode];
-			if (this.snakes[e.snake]) {
-				this.snakes[e.snake].turn(e.direction);
+		// alert(event.keyCode);
+		
+		if (this.roundInProgress) {
+			this.handleKeyEvent(event, E_KEY_DOWN);
+		}
+		else if (this.gameInProgress && event.keyCode == KEY_SPACE) {
+			// Waiting for round to start
+			this.startRound();
+		}
+		else if (!this.gameInProgress) {
+			if (event.keyCode == KEY_SPACE) {
+				// Waiting for game to start
+				this.start();
+			}
+			else if (this.keyEvents[event.keyCode]) {
+				var n = this.keyEvents[event.keyCode].snake;
+				this.togglePlayer(n);
 			}
 		}
 	}
 	
-	this.addPlayer = function(player) {
-		player.id = this.snakes.length - 1;
-		this.snakes.push(new Snake(this, player));
-		
-		// Update scoreboard
-		this.scoreboard.addPlayer(player);
+	this.togglePlayer = function(n) {
+		if (this.players[n])
+			delete this.players[n];
+		else
+			this.addPlayer(n);
 	}
 	
-	this.start = function() {
-		this.totalPlayers = this.snakes.length;
-		for (var i = 0; i < this.totalPlayers; i++)
-			this.scores[this.snakes[i].player.id] = 0;
-		this.startRound();
-	}
-	
-	this.startRound = function() {
-		this.inProgress = true;
-		
-		// Initialize snakes
-		for (var i = 0; i < this.snakes.length; i++) {
-			this.snakes[i].randomizePosition();
-			this.snakes[i].start();
+	this.handleKeyUp = function(event) {
+		if (this.roundInProgress) {
+			this.handleKeyEvent(event, E_KEY_UP);
 		}
 	}
 	
-	this.endRound = function() {
-		this.inProgress = false;
+	this.handleKeyEvent = function(event, type) {
+		if (this.keyEvents[event.keyCode]) {
+			var e = this.keyEvents[event.keyCode];
+			e.type = type;
+			this.currentRound.handleKeyEvent(e);
+		}
+	}
+	
+	/**
+	 * Callback from currentRound to update global scoreboard each time a snake dies.
+	 */
+	this.grantPoint = function(players) {
+		for (var key in players) {
+			self.scores[players[key].id]++;
+		}	
+		self.scoreboard.update();
+	}
+	
+	/**
+	 * Pre-game logic for adding players.
+	 */
+	this.addPlayer = function(n) {
+		if (!this.gameInProgress) {
+			var player = {id: n, name: "Player " + n, color: COLORS[n]};
+			
+			// Push to player array
+			this.players[n] = player;
 		
-		// Stop remaining snake
-		this.snakes[0].isAlive = false;
+			// Add to scoreboard
+			this.scoreboard.addPlayer(player);
+		}
+		else {
+			alert("Tried to add a player while in-game. This should not happen.");
+		}
+	}
+	
+	/**
+	 * Start new set of rounds.
+	 */
+	this.start = function() {
+		this.gameInProgress = true;
+		this.resetScore();
+		this.startRound();
+	}
+	
+	/**
+	 * Starts a new round.
+	 */
+	this.startRound = function() {
+		this.roundInProgress = true;
+		this.scoreboard.restore();
+		
+		this.currentRound = new Round(this, this.players);
+		setTimeout(function(){
+			self.currentRound.start();
+		}, 1500);
+	}
+	
+	this.endRound = function() {
+		this.roundInProgress = false;
 		
 		// Maek fix logic for next round etc.
 		// alert("GAME OVER! " + this.snakes[0].player.name + " WONZ!");
 	}
 	
-	this.snakeDied = function(snake) {
-		// Remove correct element from active snakes
-		for (var i = 0; i < this.snakes.length; i++) {
-			if (this.snakes[i] == snake) {
-				var s = this.snakes.splice(i, 1)[0];
-				break;
-			}
-		}
+	/**
+	 * Resets score and scoreboard.
+	 */
+	this.resetScore = function() {
+		// Set each score to zero
+		for (var i = 0; i < this.players.length; i++)
+			this.scores[this.players[i].id] = 0;
 		
-		// Push to loser stack
-		this.loserStack.push(snake);
-		
-		// Update scoreboard
-		for (var i = 0; i < this.snakes.length; i++) {
-			var s = this.snakes[i];
-			this.scores[s.player.id]++;
-			this.scoreboard.setScore(s.player, this.scores[s.player.id]);
-		}
-		
-		// Check for winner
-		if (this.snakes.length == 1) {
-			this.scoreboard.highlight(this.snakes[0])
-			this.endRound();
-		}
+		this.scoreboard.update();
 	}
+	
 }
 
-function Snake(game, player, startX, startY, startDirection) {
+function Snake(round, player, startX, startY, startDirection) {
+	var self = this;
+	
 	this.isAlive = true;
 	
-	this.game = game;
+	this.round = round;
 	this.player = player;
 	this.color = this.player.color;
 	
@@ -97,6 +221,11 @@ function Snake(game, player, startX, startY, startDirection) {
 	this.x = startX;
 	this.y = startY;
 	this.direction = startDirection;
+	
+	// Turn control
+	this.turnLock = false;
+	this.turning = false;
+	this.turnTimer = null;
 	
 	this.randomizePosition = function() {
 		var x = Math.random() * (WIDTH - 100) + 50,
@@ -115,12 +244,28 @@ function Snake(game, player, startX, startY, startDirection) {
 		return this.y + SPEED * Math.sin(this.direction);
 	}
 	
-	this.turn = function(direction) {
+	this.startTurning = function(direction) {
+		if (!this.turnLock || (this.turning && this.turning != direction)) {
+			this.turning = direction;
+			this.turn();
+		}
+	}
+	this.stopTurning = function() {
+		this.turning = null;
+		this.turnLock = false;
+		
+		clearTimeout(this.turnTimer);
+	}
+	this.turn = function() {
 		if (!this.turnLock) {
-			this.direction = this.direction + direction * TURN_RATIO * Math.PI;
+			this.direction = this.direction + this.turning * TURN_RATIO * Math.PI;
 			this.turnLock = true;
-			var self = this;
-			setTimeout(function(){ self.turnLock = false; }, TURN_FREQ);
+			
+			this.turnTimer = setTimeout(function(){
+				self.turnLock = false;
+				if (self.turning)
+					self.turn();
+			}, TURN_FREQ);
 		}
 	}
 	
@@ -133,7 +278,7 @@ function Snake(game, player, startX, startY, startDirection) {
 	this.toggleHoleGeneration = function() {
 		var time, self = this;
 		if (this.isMakingHole) 
-			time = HOLE_FREQ + Math.random() * HOLE_FREQ_VARIANCE - HOLE_SIZE_VARIANCE / 2;
+			time = HOLE_FREQ + Math.random() * HOLE_FREQ_VARIANCE - HOLE_FREQ_VARIANCE / 2;
 		else
 			time = HOLE_SIZE + Math.random() * HOLE_SIZE_VARIANCE - HOLE_SIZE_VARIANCE / 2;
 		
@@ -151,24 +296,29 @@ function Snake(game, player, startX, startY, startDirection) {
 			else {
 				// Check for collision before painting
 				this.checkForCollision(this.nextX(), this.nextY());
-			
-				// Perform move
-				ctx.strokeStyle = this.color;
-				ctx.lineWidth = LINE_WIDTH;
-			
-				ctx.beginPath();
-				ctx.moveTo(this.x, this.y);
-				this.x = this.nextX();
-				this.y = this.nextY();
-				ctx.lineTo(this.x, this.y);
-				ctx.stroke();
-				ctx.closePath();
+				
+				// Perform the drawing
+				this.draw();
 			}
 			
 			// Move again
 			var s = this;
 			setTimeout(function(){ s.move() }, TICK);
 		}
+	}
+	
+	this.draw = function() {
+		// Perform move
+		ctx.strokeStyle = this.color;
+		ctx.lineWidth = LINE_WIDTH;
+	
+		ctx.beginPath();
+		ctx.moveTo(this.x, this.y);
+		this.x = this.nextX();
+		this.y = this.nextY();
+		ctx.lineTo(this.x, this.y);
+		ctx.stroke();
+		ctx.closePath();
 	}
 	
 	/**
@@ -203,13 +353,9 @@ function Snake(game, player, startX, startY, startDirection) {
 		this.isAlive = false;
 		
 		// Notify game
-		this.game.snakeDied(this);
+		this.round.snakeDied(this);
 	}
 	
-	this.handleKeyDown = function(evt) {
-		alert(evt);
-		
-	}
 }
 
 /**
@@ -224,9 +370,53 @@ var TURN_RATIO = 0.1,
     TURN_FREQ = 100;
 
 var HOLE_FREQ = 2000,
-    HOLE_FREQ_VARIANCE = 500,
+    HOLE_FREQ_VARIANCE = 1500,
     HOLE_SIZE = 5 * TICK,
 	HOLE_SIZE_VARIANCE = 2 * TICK;
 
 var LEFT = -1,
     RIGHT = 1;
+
+var KEY_SPACE = 32,
+	KEY_LEFT = 37,
+	KEY_DOWN = 40,
+	KEY_L_CTRL = 17,
+	KEY_L_ALT = 18,
+	KEY_M = 77,
+	KEY_COMMA = 188,
+	KEY_MULTIPLY = 106,
+	KEY_MINUS = 109,
+	KEY_1 = 49,
+	KEY_Q = 81;
+
+var	E_KEY_DOWN = 1,
+    E_KEY_UP = 2;
+
+var COLORS = {
+	1: "#900",
+	2: "#099",
+	3: "#990",
+	4: "#090",
+	5: "#909"
+}
+
+function keyEvents() {
+	var e = {};
+	
+	e[KEY_1] = 			{snake: 1, direction: LEFT};
+	e[KEY_Q] = 			{snake: 1, direction: RIGHT};
+	
+	e[KEY_L_CTRL] = 	{snake: 2, direction: LEFT};
+	e[KEY_L_ALT] = 		{snake: 2, direction: RIGHT};
+	
+	e[KEY_M] = 			{snake: 3, direction: LEFT};
+	e[KEY_COMMA] = 		{snake: 3, direction: RIGHT};
+	
+	e[KEY_LEFT] = 		{snake: 4, direction: LEFT};
+	e[KEY_DOWN] = 		{snake: 4, direction: RIGHT};
+	
+	e[KEY_MULTIPLY] = 	{snake: 5, direction: LEFT};
+	e[KEY_MINUS] = 		{snake: 5, direction: RIGHT};
+	
+	return e;
+}

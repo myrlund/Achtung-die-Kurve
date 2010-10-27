@@ -45,7 +45,7 @@ function Scoreboard(element) {
 	 * Updates all shown scores based on game scores.
 	 */
 	this.update = function() {
-		for (var i = 0; i < this.game.scores.length; i++) {
+		for (var i in this.game.scores) {
 			this._player(i).find(".score").text(this.game.scores[i]);
 		}
 	}

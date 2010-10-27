@@ -4,10 +4,11 @@ function Round(game, players) {
 	
 	this.game = game;
 	this.initialPlayers = players;
-	this.remainingPlayers = players.length;
+	this.remainingPlayers = 0;
 	
 	this.players = {};
 	$.each(players, function(i, player) {
+		self.remainingPlayers++;
 		self.players[player.id] = player;
 	});
 	
@@ -88,9 +89,7 @@ function Game(scoreboard) {
 	this.scores = {};
 	this.players = {};
 	
-	this.initialize = function(numberOfPlayers) {
-		for (var i=0; i < numberOfPlayers; i++) {};
-	}
+	this.initialize = function(numberOfPlayers) {}
 	
 	/**
 	 * Initial handler for key presses. Passes on the logic to currentRound.
@@ -143,7 +142,7 @@ function Game(scoreboard) {
 	 */
 	this.grantPoint = function(players) {
 		for (var key in players) {
-			self.scores[players[key].id]++;
+			self.scores[key]++;
 		}	
 		self.scoreboard.update();
 	}
@@ -181,6 +180,7 @@ function Game(scoreboard) {
 	this.startRound = function() {
 		this.roundInProgress = true;
 		this.scoreboard.restore();
+		this.clearCanvas();
 		
 		this.currentRound = new Round(this, this.players);
 		setTimeout(function(){
@@ -195,12 +195,16 @@ function Game(scoreboard) {
 		// alert("GAME OVER! " + this.snakes[0].player.name + " WONZ!");
 	}
 	
+	this.clearCanvas = function() {
+		ctx.clearRect(0, 0, WIDTH, HEIGHT);
+	}
+	
 	/**
 	 * Resets score and scoreboard.
 	 */
 	this.resetScore = function() {
 		// Set each score to zero
-		for (var i = 0; i < this.players.length; i++)
+		for (var i in this.players)
 			this.scores[this.players[i].id] = 0;
 		
 		this.scoreboard.update();

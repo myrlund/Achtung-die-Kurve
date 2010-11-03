@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+	<head>
+	    <script src="/socket.io/socket.io.js"></script>
+		<script>
+			var socket = new io.Socket(null, {port: 8080, rememberTransport: false});
+			socket.connect();
+			socket.on('message', function(obj){
+				alert(obj.alert);
+			});
+		</script>
+	</head>
+	<body>
+		<h1>YAY!</h1>
+		<button onclick="socket.send({respond:'test'});">Connect</button>
+	</body>
+</html>

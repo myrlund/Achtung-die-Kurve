@@ -1,16 +1,16 @@
 
 function Round(game, players) {
-	self = this;
+	var self = this;
 	
 	this.game = game;
 	this.initialPlayers = players;
 	this.remainingPlayers = 0;
 	
-	this.players = {};
-	$.each(players, function(i, player) {
-		self.remainingPlayers++;
-		self.players[player.id] = player;
-	});
+	this.players = players;
+	// $.each(players, function(i, player) {
+	// 	self.remainingPlayers++;
+	// 	self.players[player.id] = player;
+	// });
 	
 	this.snakes = {};
 	
@@ -182,7 +182,7 @@ function Game(scoreboard) {
 		this.scoreboard.restore();
 		this.clearCanvas();
 		
-		this.currentRound = new Round(this, this.players);
+		self.currentRound = new Round(this, this.players);
 		setTimeout(function(){
 			self.currentRound.start();
 		}, 1500);
